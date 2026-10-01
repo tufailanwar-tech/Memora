@@ -51,6 +51,15 @@ pdfSelector.addEventListener("click",(e)=>{
       pages.push({ page: i, text: text });
     }
     console.log(pages.length);
+    const allChunks = [];
+    for (const p of pages) {
+      const cs = chunkText(p.text);
+      for (const c of cs) {
+        allChunks.push({ page: p.page, text: c });
+      }
+    }
+    console.log('total chunks:', allChunks.length);
+
 
   })
 })
