@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf6ec">
+  <title>Memora — Your offline AI librarian</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+  <div class="ticker">
+    <div class="ticker-copy">YOUR LIBRARY NEVER LEAVES THIS BROWSER ✦ LOCAL MODEL ✦ OFFLINE AFTER DOWNLOAD ✦ ZERO CLOUD
+    </div>
+    <div class="ticker-tag">FINAL / DIRECTION 01</div>
+  </div>
+
+  <header class="masthead">
+    <a class="wordmark" href="#library" aria-label="Memora home">MEM<span class="wordmark-mark">↗</span>RA</a>
+    <nav class="main-nav" aria-label="Main navigation">
+      <a class="nav-button nav-library" href="#library">LIBRARY!</a>
+      <a class="nav-button nav-threads" href="#threads">THREADS</a>
+      <a class="nav-button nav-feed" href="#library">FEED IT A PDF / NOTE</a>
+      <span class="nav-button nav-local">LOCAL</span>
+    </nav>
+  </header>
+
+  <main class="workspace" id="library">
+    <aside class="switchboard" aria-label="Knowledge switchboard">
+      <span class="switchboard-label">KNOWLEDGE SWITCHBOARD</span>
+      <div class="switchboard-tools" aria-label="Library tools">
+        <button class="rail-tool rail-tool-active" type="button" aria-label="Library">▦</button>
+        <button class="rail-tool" type="button" aria-label="Search">⌕</button>
+        <button class="rail-tool" type="button" aria-label="Connections">⌘</button>
+      </div>
+    </aside>
+
+    <section class="center-column" aria-label="Your library and reading page">
+      <section class="library-grid" aria-label="Library objects">
+        <article class="library-card hero-card">
+          <div class="card-eyebrow">MY LIBRARY <span> / 28 OBJECTS</span></div>
+          <h1>Pick a thought.<br>Pull the thread.</h1>
+          <div class="search-pill"><span>Search locally…</span><span class="search-icon">⌕</span></div>
+        </article>
+
+        <article class="library-card memory-card">
+          <span class="status-tag">PDF · ACTIVE</span>
+          <h2>The Memory Machine</h2>
+          <p>84 pages · 16 highlights · indexed</p>
+        </article>
+
+        <article class="library-card cognition-card">
+          <h2>Situated cognition</h2>
+          <p>22 pages · 8 links</p>
+        </article>
+
+        <article class="library-card notes-card">
+          <h2>Context field notes</h2>
+          <p>Edited today · 1,204 words</p>
+        </article>
+
+        <article class="library-card download-card">
+          <div class="card-eyebrow">MODEL DOWNLOAD</div>
+          <div class="progress-track" role="progressbar" aria-label="Model download" aria-valuemin="0"
+            aria-valuemax="100" aria-valuenow="72">
+            <span></span>
+          </div>
+          <p>318 / 442 MB · then fully offline</p>
+        </article>
+      </section>
+
+      <article class="reading-page" id="threads">
+        <div class="reading-topline">
+          <p>01&nbsp; THE MEMORY MACHINE / PAGE 42</p>
+          <div class="zoom-controls" aria-label="Zoom controls"><span>−</span><span>93%</span><span>+</span></div>
+        </div>
+        <h2 class="reading-title">Context is the <span>architecture</span> of recall.</h2>
+        <p class="lede">Memory does not behave like a filing cabinet. It reconstructs meaning from cues, places, and
+          relationships.</p>
+
+        <div class="reading-content">
+          <div class="body-copy">
+            <p>Remembering is not a simple replay of stored information. The mind rebuilds an experience, drawing on the
+              details available in the present moment.</p>
+            <p>A familiar room, a phrase, or a question can all act as a cue. When those cues echo the conditions in
+              which something was learned, the path back to it becomes easier to find.</p>
+          </div>
+          <div class="source-notes" aria-label="Source notes">
+            <aside class="sticky-note note-yellow">
+              <span>SOURCE [1] · P.42</span>
+              <p>“Retrieval improves when cues at recall overlap with learning.”</p>
+            </aside>
+            <aside class="sticky-note note-lavender">
+              <span>SOURCE [2] · P.45</span>
+              <p>“The environment becomes an active index.”</p>
+            </aside>
+          </div>
+        </div>
+
+        <div class="mentions-strip"><strong>3 connected documents mention retrieval cues.</strong> Drag a citation into
+          the conversation to ask about it.</div>
+        <nav class="page-nav" aria-label="Page navigation">
+          <a href="#page-41">← 41</a>
+          <span>CHAPTER 04 / CONTEXTUAL CUES</span>
+          <a href="#page-43">43 →</a>
+        </nav>
+      </article>
+    </section>
+
+    <aside class="chat-column" aria-label="Chat with your document">
+      <section class="chat-panel">
+        <div class="chat-kicker">CHAT / ONE DOCUMENT</div>
+        <h2>Talk to the page</h2>
+        <div class="question-bubble">How does context improve memory retrieval?</div>
+        <div class="answer-block">
+          <p>Context gives your brain overlapping cues to follow back to a memory. When the cues at recall match the
+            learning environment, retrieval gets easier <a href="#source-1">[1, 2]</a>.</p>
+          <div class="source-chip" id="source-1">p. 42 · Retrieval improves when cues overlap with learning.</div>
+        </div>
+        <form class="chat-input" action="#" method="get">
+          <label class="visually-hidden" for="question">Ask something strange…</label>
+          <input id="question" type="text" placeholder="Ask something strange…">
+          <button type="submit" aria-label="Send question">↗</button>
+        </form>
+      </section>
+      <div class="privacy-badge">
+        <strong>YOUR BRAIN, YOUR BROWSER.</strong>
+        <span>No cloud. No tracking. Works offline after the first model download.</span>
+      </div>
+    </aside>
+  </main>
+
+  <footer class="bottom-strip">Memora · PDF.js → chunks → MiniLM embeddings → cosine retrieval → WebLLM Llama-3.2-1B ·
+    all on-device</footer>
+  <script src="js/app.js"></script>
+</body>
+
+</html>
