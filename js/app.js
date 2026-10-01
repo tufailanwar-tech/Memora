@@ -2,6 +2,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 
 let extractor = null;
 let library = [];
+let llmEngine = null;
+
 
 async function initEmbeddings(){
   const transformers = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js');
@@ -9,6 +11,14 @@ async function initEmbeddings(){
   console.log('model ready');
 }
 initEmbeddings();
+initLLM();
+
+async function initLLM() {
+  const webllm = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm');
+
+  llmEngine = await webllm.CreateMLCEngine('Llama-3.2-1B-Instruct-q4f16_1-MLC');
+  console.log('llm ready');
+}
 
 async function embedChunks(chunks){
   for(let i=0;i<chunks.length;i++){
@@ -18,6 +28,8 @@ async function embedChunks(chunks){
   }
   console.log('embedded:', chunks.length);
 }
+
+
 
 function cosineSim(a,b){
   let sum=0;
@@ -36,6 +48,26 @@ async function retrieve(question){
   scored.sort((a, b) => b.score - a.score);
   return scored.slice(0, 5);
 }
+
+async function askQuestion(question) {
+  if (!llmEngine) {
+    console.log('llm not ready yet');
+    return;
+  }
+  const top = await retrieve(question);
+  const context = top.map(r => "[p" + r.chunk.page + "] " + r.chunk.text).join("\n\n");
+  const reply = await llmEngine.chat.completions.create({
+    messages: [
+      { role: "system", content: "Answer the question using ONLY the context below. Cite sources like [p2]. If the answer is not in the context, say you don't know.Answer briefly in 2-3 sentences." },
+      { role: "user", content: "Context:\n" + context + "\n\nQuestion: " + question }
+    ],
+    max_tokens: 120
+  });
+  const answer = reply.choices[0].message.content;
+  console.log(answer);
+  return answer;
+}
+
 
 function chunkText(text) {
   const chunks = [];
