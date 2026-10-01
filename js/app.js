@@ -1,6 +1,7 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 let extractor = null;
+let library = [];
 
 async function initEmbeddings(){
   const transformers = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js');
@@ -16,6 +17,24 @@ async function embedChunks(chunks){
 
   }
   console.log('embedded:', chunks.length);
+}
+
+function cosineSim(a,b){
+  let sum=0;
+  for(let i=0;i<a.length;i++){
+    sum+=a[i]*b[i];
+  }
+  return sum;
+}
+
+async function retrieve(question){
+  const qOut = await extractor(question, { pooling: 'mean', normalize: true });
+  const qVec = qOut.tolist()[0];
+  const scored = library.map((c) => {
+    return { chunk: c, score: cosineSim(qVec, c.embedding) };
+  });
+  scored.sort((a, b) => b.score - a.score);
+  return scored.slice(0, 5);
 }
 
 function chunkText(text) {
@@ -82,7 +101,9 @@ pdfSelector.addEventListener("click",(e)=>{
       return;
     }
     await embedChunks(allChunks);
+    library.push(...allChunks);
     console.log(allChunks[0].embedding.length);
+    console.log(library.length);
 
 
   })
