@@ -1,5 +1,14 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+let extractor = null;
+
+async function initEmbeddings(){
+  const transformers = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js');
+  extractor=await transformers.pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
+  console.log('model ready');
+}
+initEmbeddings();
+
 function chunkText(text) {
   const chunks = [];
   const size = 500;
