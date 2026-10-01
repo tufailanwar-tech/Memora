@@ -9,6 +9,15 @@ async function initEmbeddings(){
 }
 initEmbeddings();
 
+async function embedChunks(chunks){
+  for(let i=0;i<chunks.length;i++){
+    const out = await extractor(chunks[i].text, { pooling: 'mean', normalize: true });
+    chunks[i].embedding = out.tolist()[0];
+
+  }
+  console.log('embedded:', chunks.length);
+}
+
 function chunkText(text) {
   const chunks = [];
   const size = 500;
@@ -68,6 +77,12 @@ pdfSelector.addEventListener("click",(e)=>{
       }
     }
     console.log('total chunks:', allChunks.length);
+    if (!extractor) {
+    console.log('model not ready yet');
+      return;
+    }
+    await embedChunks(allChunks);
+    console.log(allChunks[0].embedding.length);
 
 
   })
