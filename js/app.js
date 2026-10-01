@@ -1,5 +1,16 @@
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
+function chunkText(text) {
+  const chunks = [];
+  const size = 500;
+  const overlap = 50;
+  for (let i = 0; i < text.length; i += size - overlap) {
+    chunks.push(text.slice(i, i + size));
+  }
+  
+  return chunks;
+}
+
 
 const pdfSelector=document.querySelector(".nav-feed");
 pdfSelector.addEventListener("click",(e)=>{
@@ -26,6 +37,20 @@ pdfSelector.addEventListener("click",(e)=>{
       <p>${pdf.numPages} pages · just added</p>
     `;
     grid.appendChild(card);
+
+
+    // const chunks = chunkText(text);
+    // console.log('chunks:', chunks.length);
+    // console.log(chunks[0].slice(0, 80));
+
+    const pages = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+      let page = await pdf.getPage(i);
+      let textContent = await page.getTextContent();
+      let text = textContent.items.map(item => item.str).join(' ');
+      pages.push({ page: i, text: text });
+    }
+    console.log(pages.length);
 
   })
 })
