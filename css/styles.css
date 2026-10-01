@@ -19,7 +19,8 @@
 
 html {
   min-width: 320px;
-  background: var(--paper-cream);
+  /* background: var(--paper-cream); */
+  background: var(--shell-red);
 }
 
 body {
@@ -283,6 +284,8 @@ input {
   font-weight: 850;
   letter-spacing: -0.45px;
   line-height: 1.1;
+  overflow-wrap: anywhere;
+
 }
 
 .library-card p {
