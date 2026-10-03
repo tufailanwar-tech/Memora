@@ -105,8 +105,33 @@ async function initEmbeddings() {
   extractor = await transformers.pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2');
   console.log('model ready');
 }
+
 initEmbeddings();
-initLLM();
+if (localStorage.getItem('memora-model')) {
+  initLLM();
+} else {
+  document.querySelector('.model-modal').hidden = false;
+}
+
+document.querySelector('.model-switch').addEventListener('click', () => {
+  document.querySelector('.model-modal').hidden = false;
+});
+
+document.querySelectorAll('.model-option').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const prev = localStorage.getItem('memora-model');
+    const next = btn.dataset.model;
+    document.querySelector('.model-modal').hidden = true;
+    if (prev === next) return;
+    localStorage.setItem('memora-model', next);
+    if (prev === null) {
+      initLLM();
+    } else {
+      location.reload();
+    }
+  });
+});
+
 
 async function initLLM() {
   const webllm = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm');
