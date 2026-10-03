@@ -279,7 +279,7 @@ pdfSelector.addEventListener("click", (e) => {
   e.preventDefault();
   const input = document.createElement('input');
   input.type = 'file';
-  input.accept = '.pdf,.md,.txt';
+  input.accept = '.pdf';
   input.style.display = 'none'
   document.body.appendChild(input);
   input.click();
@@ -299,11 +299,6 @@ pdfSelector.addEventListener("click", (e) => {
       <p>${pdf.numPages} pages · just added</p>
     `;
     grid.appendChild(card);
-
-
-    // const chunks = chunkText(text);
-    // console.log('chunks:', chunks.length);
-    // console.log(chunks[0].slice(0, 80));
 
     const pages = [];
     for (let i = 1; i <= pdf.numPages; i++) {
@@ -350,6 +345,9 @@ pdfSelector.addEventListener("click", (e) => {
     chatPanel.insertBefore(systemNote, chatPanel.querySelector('.chat-input'));
     console.log(allChunks[0].embedding.length);
     console.log(library.length);
+
+    // remove the temporary file picker from the page
+    input.remove();
 
 
   })
