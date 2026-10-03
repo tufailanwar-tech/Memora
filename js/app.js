@@ -14,6 +14,39 @@ let currentDocumentPage = 0;
 let renderRequest = 0;
 let activeRenderTask = null;
 
+// IndexedDB: keeps the library (PDFs + chunk embeddings) across reloads.
+let db = null;
+
+// Open (or create) the database. Runs once at load.
+function openDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('memora', 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore('documents', { keyPath: 'id', autoIncrement: true }); };
+    req.onsuccess = () => { db = req.result; resolve(); };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+// Save one document record.
+function dbPut(record) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('documents', 'readwrite');
+    tx.objectStore('documents').put(record);
+    tx.oncomplete = resolve;
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// Read all saved documents, oldest first.
+function dbAll() {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('documents', 'readonly');
+    const req = tx.objectStore('documents').getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
 function openDocument(index) {
   openDocumentIndex = index;
   currentDocumentPage = 0;
@@ -274,6 +307,46 @@ function chunkText(text) {
 }
 
 
+// Rates extracted PDF text: 'scanned' (photo, no text), 'garbled'
+// (broken text layer), or 'ok'.
+function checkTextQuality(pages) {
+  const totalChars = pages.reduce((n, p) => n + p.text.replace(/\s/g, '').length, 0);
+  const avgPerPage = totalChars / pages.length;
+  if (avgPerPage < 100) return 'scanned';
+  const words = pages.map(p => p.text).join(' ').split(/\s+/).filter(w => w.length > 0);
+  const singleLetters = words.filter(w => w.length === 1).length;
+  if (words.length > 0 && singleLetters / words.length > 0.3) return 'garbled';
+  return 'ok';
+}
+
+// Builds a library card for a document. Used for new uploads and restores.
+function addLibraryCard(name, numPages, documentIndex) {
+  const grid = document.querySelector('.library-grid');
+  const card = document.createElement('article');
+  card.className = 'library-card memory-card';
+  card.innerHTML = `
+    <span class="status-tag">PDF · ACTIVE</span>
+    <h2>${name}</h2>
+    <p>${numPages} pages</p>
+  `;
+  grid.appendChild(card);
+  const libraryCount = document.querySelector('.library-count');
+  if (libraryCount) {
+    libraryCount.textContent = `${documents.length} OBJECT${documents.length === 1 ? '' : 'S'}`;
+  }
+  card.setAttribute('role', 'button');
+  card.setAttribute('tabindex', '0');
+  card.setAttribute('aria-label', `Open ${name}`);
+  card.addEventListener('click', () => openDocument(documentIndex));
+  card.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      openDocument(documentIndex);
+    }
+  });
+}
+
+
 const pdfSelector = document.querySelector(".nav-feed");
 pdfSelector.addEventListener("click", (e) => {
   e.preventDefault();
@@ -290,16 +363,6 @@ pdfSelector.addEventListener("click", (e) => {
     const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
     console.log(file.name, pdf.numPages);
 
-    const grid = document.querySelector('.library-grid');
-    const card = document.createElement('article');
-    card.className = 'library-card memory-card';
-    card.innerHTML = `
-      <span class="status-tag">PDF · ACTIVE</span>
-      <h2>${file.name}</h2>
-      <p>${pdf.numPages} pages · just added</p>
-    `;
-    grid.appendChild(card);
-
     const pages = [];
     for (let i = 1; i <= pdf.numPages; i++) {
       let page = await pdf.getPage(i);
@@ -307,21 +370,10 @@ pdfSelector.addEventListener("click", (e) => {
       let text = textContent.items.map(item => item.str).join(' ');
       pages.push({ page: i, text: text });
     }
+    // rate the text: warn on scans instead of inviting bad answers
+    const quality = checkTextQuality(pages);
     const documentIndex = documents.push({ name: file.name, pdf, pages }) - 1;
-    const libraryCount = document.querySelector('.library-count');
-    if (libraryCount) {
-      libraryCount.textContent = `${documents.length} OBJECT${documents.length === 1 ? '' : 'S'}`;
-    }
-    card.setAttribute('role', 'button');
-    card.setAttribute('tabindex', '0');
-    card.setAttribute('aria-label', `Open ${file.name}`);
-    card.addEventListener('click', () => openDocument(documentIndex));
-    card.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter' || event.key === ' ') {
-        event.preventDefault();
-        openDocument(documentIndex);
-      }
-    });
+    addLibraryCard(file.name, pdf.numPages, documentIndex);
     console.log(pages.length);
     const allChunks = [];
     for (const p of pages) {
@@ -336,12 +388,25 @@ pdfSelector.addEventListener("click", (e) => {
     }
     await embedChunks(allChunks);
     library.push(...allChunks);
+    // save to IndexedDB so this document survives reload (never blocks chat on failure)
+    try {
+      await dbPut({ name: file.name, numPages: pdf.numPages, bytes: bytes.slice(0), chunks: allChunks, quality });
+    } catch (e) {
+      console.log('db save failed:', e);
+    }
     const chatPanel = document.querySelector('.chat-panel');
     const chatEmpty = chatPanel.querySelector('.chat-empty');
     if (chatEmpty) chatEmpty.remove();
     const systemNote = document.createElement('div');
     systemNote.className = 'system-note';
-    systemNote.textContent = `${file.name} added — ask me anything about it.`;
+    // warn on unreadable scans instead of inviting questions we can't answer
+    if (quality === 'ok') {
+      systemNote.textContent = `${file.name} added — ask me anything about it.`;
+    } else if (quality === 'scanned') {
+      systemNote.textContent = `${file.name} looks like a scanned image — there's no readable text in it, so I can't answer questions about it.`;
+    } else {
+      systemNote.textContent = `${file.name} has garbled text — my answers about it may be wrong.`;
+    }
     chatPanel.insertBefore(systemNote, chatPanel.querySelector('.chat-input'));
     console.log(allChunks[0].embedding.length);
     console.log(library.length);
@@ -404,3 +469,36 @@ chatClear.addEventListener('click', () => {
     chatPanel.insertBefore(empty, chatForm);
   }
 });
+
+
+// Rebuilds the library from IndexedDB on page load: documents, chunks,
+// embeddings, and cards — no re-adding PDFs, no re-embedding.
+async function restoreLibrary() {
+  try {
+    await openDB();
+  } catch (e) { console.log('db open failed:', e); return; }
+  let records = [];
+  try {
+    records = await dbAll();
+  } catch (e) { console.log('db read failed:', e); return; }
+  if (!records.length) return; // first visit: nothing saved yet
+  for (const rec of records) {
+    try {
+      const pdf = await pdfjsLib.getDocument({ data: rec.bytes }).promise;
+      // placeholder pages: the reader only needs pages.length for "PAGE x OF y"
+      const pages = Array.from({ length: rec.numPages }, (_, i) => ({ page: i + 1, text: '' }));
+      const documentIndex = documents.push({ name: rec.name, pdf, pages }) - 1;
+      for (const c of rec.chunks) c.doc = documentIndex; // re-tag to the new index
+      library.push(...rec.chunks);
+      addLibraryCard(rec.name, rec.numPages, documentIndex);
+    } catch (e) { console.log('restore failed for', rec.name, e); }
+  }
+  const chatPanel = document.querySelector('.chat-panel');
+  const chatEmpty = chatPanel.querySelector('.chat-empty');
+  if (chatEmpty) chatEmpty.remove();
+  const note = document.createElement('div');
+  note.className = 'system-note';
+  note.textContent = `Restored ${records.length} document${records.length === 1 ? '' : 's'} from last visit.`;
+  chatPanel.insertBefore(note, chatPanel.querySelector('.chat-input'));
+}
+restoreLibrary();
