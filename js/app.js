@@ -170,7 +170,8 @@ function keywordRescue(question, top) {
 async function retrieve(question) {
   const qOut = await extractor(question, { pooling: 'mean', normalize: true });
   const qVec = qOut.tolist()[0];
-  const scored = library.map((c) => {
+  const pool = openDocumentIndex === null ? library : library.filter(c => c.doc === openDocumentIndex);
+  const scored = pool.map((c) => {
     return { chunk: c, score: cosineSim(qVec, c.embedding) };
   });
   scored.sort((a, b) => b.score - a.score);
@@ -180,7 +181,7 @@ async function retrieve(question) {
 async function askQuestion(question) {
   if (!llmEngine) {
     console.log('llm not ready yet');
-    return;
+    return "The model is still loading — please wait a moment and try again.";
   }
   const top = await retrieve(question);
   if (top.length === 0 || (top[0].score < 0.2 && !keywordRescue(question, top))) {
@@ -287,13 +288,12 @@ pdfSelector.addEventListener("click", (e) => {
     for (const p of pages) {
       const cs = chunkText(p.text);
       for (const c of cs) {
-        allChunks.push({ page: p.page, text: c });
+        allChunks.push({ doc: documentIndex, page: p.page, text: c });
       }
     }
     console.log('total chunks:', allChunks.length);
-    if (!extractor) {
-      console.log('model not ready yet');
-      return;
+    while (!extractor) {
+      await new Promise(r => setTimeout(r, 500));
     }
     await embedChunks(allChunks);
     library.push(...allChunks);
