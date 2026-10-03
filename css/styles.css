@@ -1023,3 +1023,29 @@ input {
   line-height: 1;
   cursor: pointer;
 }
+
+/* chat title row */
+.chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* small outline button, fills on hover */
+.chat-clear {
+  padding: 6px 10px;
+  color: var(--yellow);
+  background: transparent;
+  border: 1.5px solid var(--yellow);
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.8px;
+  cursor: pointer;
+}
+
+.chat-clear:hover {
+  color: var(--ink);
+  background: var(--yellow);
+}

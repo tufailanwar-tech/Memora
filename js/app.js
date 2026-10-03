@@ -371,3 +371,19 @@ async function checkGPU() {
   } catch (e) {}
 }
 checkGPU();
+
+
+const chatClear = document.querySelector('.chat-clear');
+chatClear.addEventListener('click', () => {
+  // wipe all messages from the panel
+  chatPanel.querySelectorAll('.question-bubble, .answer-block, .system-note').forEach((node) => node.remove());
+  // forget history so next chat starts fresh (smaller prompt, less GPU load)
+  chatHistory.length = 0;
+  // restore the empty state, once only
+  if (!chatPanel.querySelector('.chat-empty')) {
+    const empty = document.createElement('div');
+    empty.className = 'chat-empty';
+    empty.innerHTML = '<span class="empty-document-glyph" aria-hidden="true">▤</span><p>Add a PDF, then ask anything.</p>';
+    chatPanel.insertBefore(empty, chatForm);
+  }
+});
