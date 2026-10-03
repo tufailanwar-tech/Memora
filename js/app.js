@@ -335,3 +335,39 @@ pdfSelector.addEventListener("click", (e) => {
 
   })
 })
+
+
+async function checkGPU() {
+  const banner = document.querySelector('.gpu-banner');
+  const text = banner.querySelector('p');
+  banner.querySelector('.gpu-dismiss').addEventListener('click', () => {
+    banner.hidden = true;
+  });
+
+  if (!navigator.gpu) {
+    banner.classList.add('error');
+    text.textContent = "This browser can't run AI models — Memora needs Chrome or Edge with WebGPU.";
+    banner.hidden = false;
+    return;
+  }
+
+  try {
+    const adapter = await navigator.gpu.requestAdapter();
+    let info = {};
+    if (adapter.info) {
+      info = adapter.info;
+    } else if (typeof adapter.requestAdapterInfo === 'function') {
+      try {
+        info = await adapter.requestAdapterInfo();
+      } catch (e) {}
+    }
+    const desc = ((info.device || '') + ' ' + (info.description || '')).toLowerCase();
+    const software = desc.includes('swiftshader') || desc.includes('basic render driver') || desc.includes('llvmpipe');
+    const lowMem = navigator.deviceMemory && navigator.deviceMemory < 8;
+    if (software || lowMem) {
+      text.textContent = 'Weak graphics detected — stay on the Fast model. Answers may be slow on this device.';
+      banner.hidden = false;
+    }
+  } catch (e) {}
+}
+checkGPU();
