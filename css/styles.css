@@ -268,7 +268,7 @@ input {
 }
 
 .progress-track span {
-  width: 72%;
+  width: 0%;
   height: 100%;
   display: block;
   background: var(--shell-red);

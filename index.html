@@ -41,16 +41,17 @@
       <section class="library-grid" aria-label="Library objects">
       </section>
 
+      <!-- Model download card: bar + label are updated live by initProgressCallback -->
       <article class="library-card download-card">
         <div class="card-eyebrow">MODEL DOWNLOAD</div>
         <div class="progress-track" role="progressbar" aria-label="Model download" aria-valuemin="0" aria-valuemax="100"
-          aria-valuenow="72">
-          <span></span>
+          aria-valuenow="0">
+          <span class="download-bar"></span>
         </div>
-        <p>318 / 442 MB · then fully offline</p>
+        <p class="download-label">Waiting for model choice…</p>
         <button class="model-switch" type="button">CHANGE MODEL</button>
-
       </article>
+
     </section>
 
     <article class="reading-page" id="threads">

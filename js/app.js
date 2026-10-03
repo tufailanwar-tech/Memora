@@ -133,6 +133,19 @@ document.querySelectorAll('.model-option').forEach((btn) => {
 });
 
 
+// Paints WebLLM's download progress (0..1) into the MODEL DOWNLOAD card.
+function updateDownloadProgress(report) {
+  // report.text looks like "Fetching param cache [3/12]: 41%"
+  const bar = document.querySelector('.download-bar');
+  const label = document.querySelector('.download-label');
+  const track = document.querySelector('.download-card .progress-track');
+  const pct = Math.round(report.progress * 100);
+  if (bar) bar.style.width = pct + '%';
+  if (track) track.setAttribute('aria-valuenow', String(pct));
+  if (label) label.textContent = report.text;
+}
+
+
 async function initLLM() {
   const webllm = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.85/+esm');
   const saved = localStorage.getItem('memora-model');
@@ -140,15 +153,21 @@ async function initLLM() {
 
   for (const id of order) {
     try {
-      llmEngine = await webllm.CreateMLCEngine(id);
+      // initProgressCallback fires repeatedly while the model downloads
+      llmEngine = await webllm.CreateMLCEngine(id, { initProgressCallback: updateDownloadProgress });
       console.log('llm ready (' + id + ')');
+      const label = document.querySelector('.download-label');
+      if (label) label.textContent = 'Model ready · fully offline';
       return;
     } catch (err) {
       console.log(id + ' failed, trying next:', err.message);
     }
   }
   console.log('llm failed to load');
+  const label = document.querySelector('.download-label');
+  if (label) label.textContent = 'Model failed to load — reload to retry.';
 }
+
 
 async function embedChunks(chunks) {
   for (let i = 0; i < chunks.length; i++) {
