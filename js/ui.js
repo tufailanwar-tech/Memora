@@ -6,6 +6,8 @@ chatForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const q = questionInput.value.trim();
   if (!q) return;
+  const chatEmpty = chatPanel.querySelector('.chat-empty');
+  if (chatEmpty) chatEmpty.remove();
   questionInput.value = '';
 
   const bubble = document.createElement('div');
