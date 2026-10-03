@@ -12,14 +12,18 @@ Ask questions across your PDFs and get answers with page citations — entirely 
 
 ## Quick start
 
-Serve the folder over HTTP, then open it in Chrome/Edge:
+Open the live site, or serve the folder over HTTP and open it in Chrome/Edge:
 
-
+https://tufailanwar-tech.github.io/Memora/
 npx serve .
 
-1. Click **Feed** to add a PDF.
-2. Wait for `model ready` + `llm ready` in the console (first run downloads the model, ~450MB, then it's cached).
-3. Ask anything in the chat.
+
+
+
+1. Pick a model when asked — **Fast** (recommended) or **Smart** (needs a good GPU).
+2. Click **Feed** to add a PDF.
+3. Wait for the model download to finish (first run only, then it's cached).
+4. Ask anything in the chat.
 
 ## Requirements
 
@@ -28,13 +32,17 @@ npx serve .
 
 ## Models
 
-|              | Fast (default)      | Smart (opt-in)        |
-|--------------|---------------------|-----------------------|
-| Model        | Llama-3.2-1B-Instruct | Llama-3.2-3B-Instruct |
-| Download     | ~450MB              | ~1.9GB                |
-| Best for     | weak GPUs, quick answers | stronger GPUs, better reasoning |
+|              | Fast (default)           | Smart (opt-in)                |
+|--------------|--------------------------|-------------------------------|
+| Model        | Llama-3.2-1B-Instruct    | Llama-3.2-3B-Instruct         |
+| Download     | ~450MB                   | ~1.9GB                        |
+| Best for     | weak GPUs, quick answers | stronger GPUs, better answers |
 
-Switch in the console: `localStorage.setItem('memora-model', 'smart')`, then reload. Set it to `'fast'` (or remove the key) to go back.
+Choose on first visit via the popup. Change anytime with the **CHANGE MODEL** button in the library — switching reloads the page to load the new model.
+
+## Offline
+
+Internet is needed only on the first visit — to load the site and download the models. A service worker then saves the whole site in your browser, and the models stay cached. After that, open it from a bookmark or home-screen icon and everything works with no internet: your PDFs, the search, and the answers.
 
 ## Privacy
 
@@ -45,6 +53,7 @@ index.html — layout
 css/ — styles
 js/app.js — pipeline: ingest, chunk, embed, retrieve, LLM
 js/ui.js — chat rendering
+sw.js — service worker for offline use
 
 
 
