@@ -164,7 +164,6 @@ input {
 }
 
 .library-column .library-grid {
-  flex: 1;
   align-content: start;
   margin-bottom: 0;
 }
@@ -588,7 +587,7 @@ input {
   padding: 12px 13px;
   color: var(--ink);
   background: var(--yellow);
-  border: 1px solid #0c0c0d;
+  border: 1.5px solid #0c0c0d;
   border-radius: 12px 12px 2px 12px;
   font-size: 12px;
   font-weight: 750;
@@ -933,6 +932,20 @@ input {
   line-height: 1.55;
 }
 
+.model-card h2 {
+  margin: 10px 0 8px;
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+.model-blurb {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
 .model-options {
   display: grid;
   gap: 10px;
@@ -1048,4 +1061,47 @@ input {
 .chat-clear:hover {
   color: var(--ink);
   background: var(--yellow);
+}
+
+/* × button on library cards */
+.memory-card {
+  position: relative;
+}
+
+.card-delete {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  color: #fff;
+  background: var(--shell-red);
+  border: 1.5px solid #0c0c0d;
+  border-radius: 50%;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* chat scrolls; the input sticks to the bottom */
+.chat-panel {
+  max-height: calc(100vh - 240px);
+  overflow-y: auto;
+}
+
+.chat-input {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+}
+
+/* long document names don't break the chat header */
+.chat-kicker {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

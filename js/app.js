@@ -13,6 +13,7 @@ let openDocumentIndex = null;
 let currentDocumentPage = 0;
 let renderRequest = 0;
 let activeRenderTask = null;
+let nextUid = 1; // stable per-document id (array indices shift on delete)
 
 // IndexedDB: keeps the library (PDFs + chunk embeddings) across reloads.
 let db = null;
@@ -27,11 +28,21 @@ function openDB() {
   });
 }
 
-// Save one document record.
+// Save one document record. Resolves with its auto id.
 function dbPut(record) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction('documents', 'readwrite');
-    tx.objectStore('documents').put(record);
+    const req = tx.objectStore('documents').put(record);
+    req.onsuccess = () => resolve(req.result);
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// Remove one saved record by id.
+function dbDelete(id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('documents', 'readwrite');
+    tx.objectStore('documents').delete(id);
     tx.oncomplete = resolve;
     tx.onerror = () => reject(tx.error);
   });
@@ -50,6 +61,9 @@ function dbAll() {
 function openDocument(index) {
   openDocumentIndex = index;
   currentDocumentPage = 0;
+  // show which document the chat is talking to
+  const kicker = document.querySelector('.chat-kicker');
+  if (kicker) kicker.textContent = 'CHAT / ' + documents[index].name;
   renderDocumentPage();
 }
 
@@ -60,6 +74,8 @@ function closeDocument() {
   openDocumentIndex = null;
   currentDocumentPage = 0;
   readingPage.innerHTML = originalReadingHTML;
+  const kicker = document.querySelector('.chat-kicker');
+  if (kicker) kicker.textContent = 'CHAT / ONE DOCUMENT';
 }
 
 async function renderDocumentPage() {
@@ -247,7 +263,9 @@ function keywordRescue(question, top) {
 async function retrieve(question) {
   const qOut = await extractor(question, { pooling: 'mean', normalize: true });
   const qVec = qOut.tolist()[0];
-  const pool = openDocumentIndex === null ? library : library.filter(c => c.doc === openDocumentIndex);
+  // scope to the open document via its stable uid
+  const openUid = openDocumentIndex === null ? null : documents[openDocumentIndex].uid;
+  const pool = openUid === null ? library : library.filter(c => c.doc === openUid);
   const scored = pool.map((c) => {
     return { chunk: c, score: cosineSim(qVec, c.embedding) };
   });
@@ -320,10 +338,11 @@ function checkTextQuality(pages) {
 }
 
 // Builds a library card for a document. Used for new uploads and restores.
-function addLibraryCard(name, numPages, documentIndex) {
+function addLibraryCard(name, numPages, uid) {
   const grid = document.querySelector('.library-grid');
   const card = document.createElement('article');
   card.className = 'library-card memory-card';
+  card.dataset.uid = uid;
   card.innerHTML = `
     <span class="status-tag">PDF · ACTIVE</span>
     <h2>${name}</h2>
@@ -337,13 +356,53 @@ function addLibraryCard(name, numPages, documentIndex) {
   card.setAttribute('role', 'button');
   card.setAttribute('tabindex', '0');
   card.setAttribute('aria-label', `Open ${name}`);
-  card.addEventListener('click', () => openDocument(documentIndex));
+  // index looked up fresh: deletions shift the array
+  const openByUid = () => {
+    const i = documents.findIndex(d => d.uid === uid);
+    if (i !== -1) openDocument(i);
+  };
+  card.addEventListener('click', openByUid);
   card.addEventListener('keydown', (event) => {
+    if (event.target !== card) return; // the × button handles its own keys
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      openDocument(documentIndex);
+      openByUid();
     }
   });
+  // × : delete the document (stopPropagation keeps the card from opening too)
+  const del = document.createElement('button');
+  del.className = 'card-delete';
+  del.type = 'button';
+  del.setAttribute('aria-label', `Remove ${name}`);
+  del.textContent = '×';
+  del.addEventListener('click', (event) => {
+    event.stopPropagation();
+    deleteDocument(uid);
+  });
+  card.appendChild(del);
+}
+
+// Removes a document everywhere: card, chunks, saved record.
+async function deleteDocument(uid) {
+  const index = documents.findIndex(d => d.uid === uid);
+  if (index === -1) return;
+  if (!confirm(`Remove "${documents[index].name}" from the library?`)) return;
+  library = library.filter(c => c.doc !== uid); // uid tags need no re-tagging
+  if (documents[index].dbId != null) {
+    try { await dbDelete(documents[index].dbId); } catch (e) { console.log('db delete failed:', e); }
+  }
+  const card = document.querySelector('.library-grid').querySelector(`[data-uid="${uid}"]`);
+  if (card) card.remove();
+  documents.splice(index, 1);
+  if (openDocumentIndex === index) {
+    closeDocument();
+  } else if (openDocumentIndex > index) {
+    openDocumentIndex -= 1;
+  }
+  const libraryCount = document.querySelector('.library-count');
+  if (libraryCount) {
+    libraryCount.textContent = `${documents.length} OBJECT${documents.length === 1 ? '' : 'S'}`;
+  }
 }
 
 
@@ -372,14 +431,15 @@ pdfSelector.addEventListener("click", (e) => {
     }
     // rate the text: warn on scans instead of inviting bad answers
     const quality = checkTextQuality(pages);
-    const documentIndex = documents.push({ name: file.name, pdf, pages }) - 1;
-    addLibraryCard(file.name, pdf.numPages, documentIndex);
+    const uid = nextUid++;
+    const documentIndex = documents.push({ uid, name: file.name, pdf, pages }) - 1;
+    addLibraryCard(file.name, pdf.numPages, uid);
     console.log(pages.length);
     const allChunks = [];
     for (const p of pages) {
       const cs = chunkText(p.text);
       for (const c of cs) {
-        allChunks.push({ doc: documentIndex, page: p.page, text: c });
+        allChunks.push({ doc: uid, page: p.page, text: c });
       }
     }
     console.log('total chunks:', allChunks.length);
@@ -390,7 +450,8 @@ pdfSelector.addEventListener("click", (e) => {
     library.push(...allChunks);
     // save to IndexedDB so this document survives reload (never blocks chat on failure)
     try {
-      await dbPut({ name: file.name, numPages: pdf.numPages, bytes: bytes.slice(0), chunks: allChunks, quality });
+      const id = await dbPut({ name: file.name, numPages: pdf.numPages, bytes: bytes.slice(0), chunks: allChunks, quality });
+      documents[documentIndex].dbId = id;
     } catch (e) {
       console.log('db save failed:', e);
     }
@@ -487,10 +548,11 @@ async function restoreLibrary() {
       const pdf = await pdfjsLib.getDocument({ data: rec.bytes }).promise;
       // placeholder pages: the reader only needs pages.length for "PAGE x OF y"
       const pages = Array.from({ length: rec.numPages }, (_, i) => ({ page: i + 1, text: '' }));
-      const documentIndex = documents.push({ name: rec.name, pdf, pages }) - 1;
-      for (const c of rec.chunks) c.doc = documentIndex; // re-tag to the new index
+      const uid = nextUid++;
+      const documentIndex = documents.push({ uid, dbId: rec.id, name: rec.name, pdf, pages }) - 1;
+      for (const c of rec.chunks) c.doc = uid; // re-tag to the new uid
       library.push(...rec.chunks);
-      addLibraryCard(rec.name, rec.numPages, documentIndex);
+      addLibraryCard(rec.name, rec.numPages, uid);
     } catch (e) { console.log('restore failed for', rec.name, e); }
   }
   const chatPanel = document.querySelector('.chat-panel');
@@ -502,3 +564,25 @@ async function restoreLibrary() {
   chatPanel.insertBefore(note, chatPanel.querySelector('.chat-input'));
 }
 restoreLibrary();
+
+// nav buttons: scroll to the section and flash it, so the jump is visible
+function flashSection(el) {
+  el.style.outline = '3px solid var(--blue)';
+  el.style.outlineOffset = '3px';
+  setTimeout(() => {
+    el.style.outline = '';
+    el.style.outlineOffset = '';
+  }, 900);
+}
+document.querySelector('.nav-library').addEventListener('click', (e) => {
+  e.preventDefault();
+  const el = document.querySelector('.library-column');
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  flashSection(el);
+});
+document.querySelector('.nav-threads').addEventListener('click', (e) => {
+  e.preventDefault();
+  const el = document.querySelector('.reading-page');
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  flashSection(el);
+});
